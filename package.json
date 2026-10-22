@@ -1,0 +1,45 @@
+{
+  "name": "@umn-vr/makerspaces",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An unlisted University of Minnesota makerspaces tour prototype built on FOSS Earth.",
+  "license": "AGPL-3.0-only",
+  "repository": "https://github.com/UMN-VR/makerspaces",
+  "exports": { "./scene.json": "./scene.json" },
+  "scripts": {
+    "dev": "vite --configLoader native",
+    "build": "npm run check:scene && vite build --configLoader native",
+    "preview": "vite preview --configLoader native",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test scripts/*.test.mjs",
+    "build:scene": "node scripts/build-scene.mjs",
+    "download:panorama": "node scripts/download-panorama.mjs",
+    "add:image": "node scripts/add-image.mjs",
+    "check:scene": "node scripts/build-scene.mjs --check",
+    "deploy": "node scripts/deploy.mjs",
+    "ci": "npm run typecheck && npm run lint && npm test && npm run build"
+  },
+  "dependencies": {
+    "@foss-earth/sphere-image": "file:../../foss-earth/sphere-image",
+    "foss-earth": "file:../../foss-earth/app",
+    "@foss-earth/ui": "file:../../foss-earth/ui",
+    "@foss-earth/scenes": "file:../../foss-earth/scenes",
+    "@babylonjs/core": "8.56.2",
+    "@babylonjs/loaders": "8.56.2",
+    "3d-tiles-renderer": "0.4.24",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.4",
+    "@types/node": "24.12.4",
+    "@vitejs/plugin-react": "6.0.2",
+    "eslint": "9.39.4",
+    "globals": "17.6.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.59.3",
+    "vite": "8.3.4"
+  }
+}

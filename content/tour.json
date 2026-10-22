@@ -1,0 +1,9 @@
+{
+  "id": "umn-makerspaces",
+  "title": "University of Minnesota makerspaces · prototype",
+  "sourceScene": "../twin-cities/scene.json",
+  "sourceUrl": "https://umn-vr.github.io/tour/twin-cities/scene.json",
+  "panoramas": ["the-toaster-innovation-hub"],
+  "initialPanorama": "the-toaster-innovation-hub",
+  "imports": []
+}
