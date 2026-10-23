@@ -1,8 +1,11 @@
 // Overlay only /tour/makerspaces/; never rebuild or replace the existing tour.
+// A build of the commits already published is not pushed again: it differs in its build time alone,
+// and every push to the tour's gh-pages has GitHub Pages deploy the whole tour (About's differentBuild).
 import { execFileSync } from 'node:child_process'
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { differentBuild, readBuiltFromHtml } from 'foss-earth/vite'
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url))
 const BRANCH = 'refs/heads/gh-pages'
@@ -19,7 +22,7 @@ function collect(root, under = '') {
   }).sort(([a], [b]) => a.localeCompare(b))
 }
 
-export function publishMakerspaces({ root = ROOT, hostingRepo = path.resolve(ROOT, '../tour'), remote = 'origin', dryRun = false, log = console.log } = {}) {
+export function publishMakerspaces({ root = ROOT, hostingRepo = path.resolve(ROOT, '../tour'), remote = 'origin', dryRun = false, force = false, log = console.log } = {}) {
   const dist = path.join(root, 'dist')
   if (!existsSync(dist) || lstatSync(dist).isSymbolicLink() || !lstatSync(dist).isDirectory()) throw new Error('Expected a regular makerspaces dist directory.')
   for (const name of ['index.html', 'scene.json', 'content/spaces.json', 'embed-preview.html']) {
@@ -40,6 +43,12 @@ export function publishMakerspaces({ root = ROOT, hostingRepo = path.resolve(ROO
   try {
     git(['fetch', '--no-tags', '--depth=1', '--', remote, BRANCH])
     const parent = git(['rev-parse', 'FETCH_HEAD'])
+    let published = null
+    try { published = git(['show', `${parent}:${PREFIX}index.html`]) } catch { /* Not published yet. */ }
+    if (!force && !differentBuild(readBuiltFromHtml(published), readBuiltFromHtml(html))) {
+      log('The tour gh-pages branch already has a build of these commits; nothing was pushed. Pass --force to publish it anyway.')
+      return { changed: false, commit: parent, changedPaths: [] }
+    }
     git(['read-tree', parent])
     // Store the build in the hosting repository without touching its checkout or normal index.
     const hashes = git(['hash-object', '-w', '--stdin-paths'], files.map(([, file]) => JSON.stringify(file)).join('\n') + '\n').split('\n')
@@ -61,8 +70,8 @@ export function publishMakerspaces({ root = ROOT, hostingRepo = path.resolve(ROO
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv.slice(2).some(arg => arg !== '--dry-run')) throw new Error('Usage: npm run deploy -- [--dry-run]')
-  const result = publishMakerspaces({ dryRun: process.argv.includes('--dry-run') })
+  if (process.argv.slice(2).some(arg => arg !== '--dry-run' && arg !== '--force')) throw new Error('Usage: npm run deploy -- [--dry-run] [--force]')
+  const result = publishMakerspaces({ dryRun: process.argv.includes('--dry-run'), force: process.argv.includes('--force') })
   mkdirSync(path.join(ROOT, 'build'), { recursive: true })
   // The result stays local; it can be checked against the hosting branch after publication.
   writeFileSync(path.join(ROOT, 'build/deployment.json'), `${JSON.stringify(result, null, 2)}\n`)

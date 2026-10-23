@@ -159,3 +159,20 @@ for (const [description, invalidate, error] of invalidBuilds) {
     assert.deepEqual(checkoutState(hostingRepo), beforeCheckout)
   })
 }
+
+test('pushes no rebuild of the commits already published, which differs in its build time alone', () => {
+  const { root, remote, publish } = fixture()
+  const page = (built, commit = 'a'.repeat(40)) => put(root, 'dist/index.html', '<meta name="robots" content="noindex,nofollow">'
+    + `<script src="/tour/makerspaces/assets/prototype-${built}.js"></script>`
+    + `<script type="application/json" id="foss-earth-built-from">${JSON.stringify({ built, app: { name: '@umn-vr/makerspaces', from: 'app', commit } })}</script>`)
+  page('2026-10-22T12:00:00.000Z')
+  const first = publish()
+  assert.equal(first.changed, true)
+  page('2026-10-23T08:00:00.000Z')
+  const rebuilt = publish()
+  assert.equal(rebuilt.changed, false)
+  assert.equal(git(remote, ['rev-parse', 'refs/heads/gh-pages']), first.commit)
+  assert.equal(publish({ force: true }).changed, true)
+  page('2026-10-23T09:00:00.000Z', 'b'.repeat(40))
+  assert.equal(publish().changed, true)
+})
