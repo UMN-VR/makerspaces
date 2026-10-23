@@ -28,8 +28,10 @@ npm run dev
 ```
 
 Use the address printed by Vite, with `/tour/makerspaces/`. Stop an existing
-server before reusing its port. `?embed=1` uses the same page with compact
-branding suitable for an iframe. `embed-preview.html` demonstrates that view.
+server before reusing its port. Open **+ → Makerspaces** for the directory and
+tour controls, which live in the app's native tab interface. There is no separate
+top bar. `?embed=1` uses the same tabbed interface in an iframe;
+`embed-preview.html` demonstrates that view.
 
 ## Content and images
 
@@ -106,6 +108,10 @@ authoring and download APIs are under development in the adjacent FOSS Earth
 checkouts; this prototype is built against those local sources.
 
 ## Checks and publishing
+
+Keep changes local for the user's own testing. Push source or run a deployment
+only when the user explicitly requests that specific action; these commands are
+documentation, not authorization. Agent browser tests do not replace user testing.
 
 ```sh
 npm test

@@ -21,13 +21,19 @@ function element<T extends HTMLElement>(id: string): T {
   return found as T
 }
 
-const panel = element('spaces-panel')
-const directoryButton = element<HTMLButtonElement>('directory-button')
-const content = element('directory-content')
-const state = element('tour-state')
-const currentSpace = element('current-space')
-const embed = new URLSearchParams(location.search).get('embed') === '1'
-document.documentElement.classList.toggle('is-embedded', embed)
+// Inert until the app adopts it into the native Makerspaces tab.
+const template = element<HTMLTemplateElement>('makerspaces-content')
+const panel = document.importNode(template.content, true).querySelector<HTMLElement>('.makerspaces-tab')
+if (!panel) throw new Error('Missing makerspaces tab content.')
+function tabElement<T extends HTMLElement>(id: string): T {
+  const found = panel?.querySelector<T>(`#${id}`)
+  if (!found) throw new Error(`Missing makerspaces tab element: ${id}`)
+  return found
+}
+const content = tabElement('directory-content')
+const state = tabElement('tour-state')
+const currentSpace = tabElement('current-space')
+const panoramaButton = tabElement<HTMLButtonElement>('panorama-button')
 let app: GlobeAppHandle | null = null
 let directory: Directory | null = null
 let campus = 'All campuses'
@@ -55,22 +61,10 @@ function action(label: string, work: () => void, className = 'makers-button'): H
   return button
 }
 
-function showDirectory(show: boolean): void {
-  panel.hidden = !show
-  directoryButton.setAttribute('aria-expanded', String(show))
-  if (show) element<HTMLButtonElement>('close-directory').focus()
-  else directoryButton.focus()
-}
-
-directoryButton.addEventListener('click', () => showDirectory(panel.hidden))
-element('close-directory').addEventListener('click', () => showDirectory(false))
-panel.addEventListener('keydown', event => { if (event.key === 'Escape') showDirectory(false) })
-
 async function enterPanorama(id = 'the-toaster-innovation-hub'): Promise<void> {
   const handle = app?.scenes.handle()
   if (!handle) { state.hidden = false; state.textContent = 'The 360° is still loading. You can browse Spaces while it opens.'; return }
   selected = null
-  showDirectory(false)
   state.hidden = false
   state.textContent = 'Opening the Toaster 360°…'
   try {
@@ -84,7 +78,7 @@ async function enterPanorama(id = 'the-toaster-innovation-hub'): Promise<void> {
   }
 }
 
-element('panorama-button').addEventListener('click', () => { void enterPanorama() })
+panoramaButton.addEventListener('click', () => { void enterPanorama() })
 
 function imageOf(space: Space, large = false): HTMLElement | null {
   if (!space.image) return null
@@ -137,18 +131,31 @@ function renderDirectory(): void {
   const list = text('div', '', 'space-list')
   for (const space of spaces) {
     const card = text('article', '', 'space-card')
-    const photo = imageOf(space)
-    if (photo) card.append(photo)
-    const body = text('div', '', 'space-card-body')
-    body.append(text('p', `${space.campus} · ${space.room}`, 'space-location'), text('h2', space.title), text('p', space.summary, 'space-summary'))
-    const links = text('div', '', 'space-actions')
-    links.append(action(space.panoramaId ? 'Enter 360°' : 'View space', () => {
+    const open = action('', () => {
       if (space.panoramaId) void enterPanorama(space.panoramaId)
-      else { selected = space; renderDirectory(); content.scrollIntoView({ block: 'start' }); }
-    }, space.panoramaId ? 'makers-button is-primary' : 'makers-button'))
+      else {
+        selected = space
+        renderDirectory()
+        content.querySelector<HTMLButtonElement>('.back-button')?.focus()
+      }
+    }, 'space-open')
+    if (space.image) {
+      const thumb = text('span', '', 'space-thumb')
+      const img = document.createElement('img')
+      img.src = new URL(space.image.url, new URL(import.meta.env.BASE_URL, location.href)).href
+      img.alt = space.image.alt
+      img.loading = 'lazy'
+      img.decoding = 'async'
+      thumb.append(img)
+      open.append(thumb)
+    }
+    const body = text('span', '', 'space-card-body')
+    body.append(text('span', `${space.campus} · ${space.room}`, 'space-location'), text('strong', space.title, 'space-title'), text('span', space.summary, 'space-summary'), text('span', space.panoramaId ? 'Enter 360° →' : 'View space →', 'space-action-label'))
+    open.append(body)
+    const links = text('div', '', 'space-card-links')
+    if (space.image) links.append(externalLink(space.image.credit, space.image.sourceUrl, 'photo-credit'))
     links.append(externalLink('Website ↗', space.url, 'space-website'))
-    body.append(links)
-    card.append(body)
+    card.append(open, links)
     list.append(card)
   }
   content.append(list)
@@ -159,7 +166,6 @@ async function loadDirectory(): Promise<void> {
     const response = await fetch(`${import.meta.env.BASE_URL}content/spaces.json`, { credentials: 'omit' })
     if (!response.ok) throw new Error(`Directory response ${response.status}`)
     directory = await response.json() as Directory
-    directoryButton.textContent = `Spaces · ${directory.spaces.length}`
     renderDirectory()
   } catch (error) {
     console.error('The makerspace directory could not load.', error)
@@ -174,6 +180,7 @@ async function startTour(): Promise<void> {
     app = await mountGlobeApp(element('root'), {
       scenes: [{ id: 'umn-makerspaces', title: 'UMN makerspaces', description: 'A makerspaces prototype, beginning at the Toaster Innovation Hub.', url: 'scene.json' }],
       initialScene: 'umn-makerspaces',
+      hostTabs: [{ id: 'host:makerspaces', label: 'Makerspaces', element: panel! }],
       preferGoogleTiles: false,
       poseExportPrefix: 'umn-makerspaces-poses',
       layerExportPrefix: 'umn-makerspaces-layers',
@@ -181,11 +188,12 @@ async function startTour(): Promise<void> {
     })
     markBrowserAppReady(document)
     await app.scenes.whenSettled()
+    panoramaButton.disabled = false
     await enterPanorama()
   } catch (error) {
     console.error('The makerspaces tour could not start.', error)
     state.hidden = false
-    state.textContent = 'The 360° viewer could not start. You can still browse Spaces.'
+    state.textContent = 'The 360° viewer could not start. Reload to try again.'
     reportBrowserAppFailure(document, `The makerspaces tour could not start. ${error instanceof Error ? error.message : String(error)}`)
   }
 }

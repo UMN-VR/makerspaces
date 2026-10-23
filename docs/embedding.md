@@ -2,6 +2,8 @@
 
 The prototype is independent at `/tour/makerspaces/`. The same responsive page
 supports `?embed=1`; no script must be installed in the University's page.
+Its directory and controls live in the native **Makerspaces** tab, available
+through **+ → Makerspaces**. It has no separate top bar or floating directory.
 
 ```html
 <iframe
