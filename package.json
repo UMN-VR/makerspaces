@@ -12,7 +12,7 @@
     "build": "npm run check:scene && vite build --configLoader native",
     "preview": "vite preview --configLoader native",
     "lint": "eslint .",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsrs -p tsconfig.json --noEmit",
     "test": "node --test scripts/*.test.mjs",
     "build:scene": "node scripts/build-scene.mjs",
     "download:panorama": "node scripts/download-panorama.mjs",
@@ -38,6 +38,7 @@
     "@vitejs/plugin-react": "6.0.2",
     "eslint": "9.39.4",
     "globals": "17.6.0",
+    "tsrs": "0.23.0-ts7.1.0-beta",
     "typescript": "5.9.3",
     "typescript-eslint": "8.59.3",
     "vite": "8.3.4"
